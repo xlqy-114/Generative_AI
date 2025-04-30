@@ -42,13 +42,13 @@ Click "Save"
 
 Copy the Assistant ID (looks like asst_abc123...)
 
-# 3. Install Dependencies
+# ⚙️ 3. Install Dependencies
 
 Make sure Python 3.9+ is installed. Then install dependencies via:
 
 pip install -r requirements.txt
 
-# 4. Run the Application
+# 🚀 4. Run the Application
 
 python main.py
 
