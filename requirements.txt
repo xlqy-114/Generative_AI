@@ -1,0 +1,11 @@
+requests
+beautifulsoup4
+ttkbootstrap
+openai
+langchain
+faiss-cpu
+tiktoken
+langchain-community
+pypdf
+pandas
+Spinner
