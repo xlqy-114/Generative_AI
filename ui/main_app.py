@@ -7,6 +7,8 @@ from .config import config
 
 class MainApp:
     def __init__(self, root):
+        style = ttk.Style()
+        style.configure("Large.TButton", font=("Arial", 14))
         self.root = root
         self.root.title("Financial Auto Analysis")
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
@@ -27,25 +29,28 @@ class MainApp:
             text="Financial Auto\n\nAnalysis Tool",
             font=(None, 64, 'bold'),
             justify="left"
-        ).place(relx=0.18, rely=0.5, anchor='w')
+        ).place(relx=0.15, rely=0.5, anchor='w')
 
         btn_fetch = ttk.Button(
             self.main_menu,
             text="Fetch PDFs",
             command=self.show_fetch,
-            bootstyle="outline-info"
+            bootstyle="outline-info",
+            style="Large.TButton"
         )
         btn_analysis = ttk.Button(
             self.main_menu,
             text="Analysis",
             command=self.show_analysis,
-            bootstyle="outline-primary"
+            bootstyle="outline-primary",
+            style="Large.TButton"
         )
         btn_settings = ttk.Button(
             self.main_menu,
             text="Settings",
             command=self.open_settings,
-            bootstyle="dark"
+            bootstyle="dark",
+            style="Large.TButton"
         )
 
 

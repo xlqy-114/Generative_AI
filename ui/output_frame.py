@@ -15,6 +15,7 @@ class OutputFrame(ttk.Labelframe):
         self.output_text.config(state="normal")
         self.output_text.insert(tk.END, text)
         self.output_text.config(state="disabled")
+        self.output_text.see(tk.END)
 
     def clear(self):
         self.output_text.config(state="normal")

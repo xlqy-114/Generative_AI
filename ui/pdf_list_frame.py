@@ -4,22 +4,22 @@ from tkinter import filedialog, messagebox
 import ttkbootstrap as ttk
 
 class PDFListFrame(ttk.Labelframe):
+    """Frame for displaying and managing uploaded PDFs."""
     def __init__(self, parent):
         super().__init__(parent, text="Uploaded PDFs")
-        self.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
 
         self.pdf_files = []
         self.check_vars = {}
 
-        container = self
-        canvas = tk.Canvas(container)
-        sb = ttk.Scrollbar(container, command=canvas.yview)
-        self.cb_frame = ttk.Frame(canvas)
-        self.cb_frame.bind(
+        # Scrollable container
+        canvas = tk.Canvas(self)
+        sb = ttk.Scrollbar(self, command=canvas.yview)
+        self.inner = ttk.Frame(canvas)
+        self.inner.bind(
             "<Configure>",
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
-        canvas.create_window((0,0), window=self.cb_frame, anchor="nw")
+        canvas.create_window((0, 0), window=self.inner, anchor="nw")
         canvas.configure(yscrollcommand=sb.set)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         sb.pack(side=tk.RIGHT, fill=tk.Y)
@@ -47,17 +47,13 @@ class PDFListFrame(ttk.Labelframe):
         self._rebuild()
 
     def _rebuild(self):
-        for widget in self.cb_frame.winfo_children():
+        for widget in self.inner.winfo_children():
             widget.destroy()
         self.check_vars.clear()
         for path in self.pdf_files:
             var = tk.BooleanVar()
-            chk = ttk.Checkbutton(
-                self.cb_frame,
-                text=os.path.basename(path),
-                variable=var
-            )
-            chk.pack(anchor="w", pady=2, padx=5)
+            chk = ttk.Checkbutton(self.inner, text=os.path.basename(path), variable=var)
+            chk.pack(anchor="w", padx=5, pady=2)
             self.check_vars[path] = var
 
     def get_selected(self):
