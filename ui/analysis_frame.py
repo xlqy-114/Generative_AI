@@ -44,11 +44,11 @@ class LoadingAnimation:
             self._job = None
         self.label.grid_forget()
 
-
 # Main AnalysisFrame Class
 class AnalysisFrame:
     def __init__(self, parent, go_back):
         self.frame = ttk.Frame(parent)
+        self.current_thread_id = None
         self.frame.pack(fill=tk.BOTH, expand=True)
         self.frame.grid_rowconfigure(2, weight=1)
         self.frame.grid_rowconfigure(4, weight=1)
@@ -90,7 +90,6 @@ class AnalysisFrame:
         ttk.Button(tb, text="⚙️ Settings", command=self.open_settings, bootstyle="secondary").grid(
             row=0, column=6, padx=5
         )
-
 
         # PDF List
         self.pdf_list = PDFListFrame(self.frame)
@@ -150,11 +149,13 @@ class AnalysisFrame:
         self.progress.grid(row=0, column=1, sticky="ew")
         self.progress.start()
         self.output_text.after(20, lambda: self.output_text.see(tk.END))
+
         threading.Thread(target=self._run_chat, args=(message,), daemon=True).start()
 
     def _run_batch_analysis(self, files):
         try:
-            res = analyze_multiple_pdfs(files, config.api_key, config.assistant_id)
+            res, tid = analyze_multiple_pdfs(files, config.api_key, config.assistant_id)
+            self.current_thread_id = tid
             self.frame.after(0, lambda: self._append(res + "\n"))
         except Exception as e:
             self.frame.after(0, lambda: messagebox.showerror("Error", str(e)))
@@ -163,7 +164,13 @@ class AnalysisFrame:
 
     def _run_chat(self, user_message: str):
         try:
-            resp = chat_with_openai(config.api_key, config.assistant_id, user_message)
+            resp, tid = chat_with_openai(
+                config.api_key,
+                config.assistant_id,
+                user_message,
+                thread_id=self.current_thread_id
+            )
+            self.current_thread_id = tid
             self.frame.after(0, lambda: self._append(f"[Assistant]: {resp}\n\n"))
         except Exception as e:
             self.frame.after(0, lambda: messagebox.showerror("Error", str(e)))
@@ -184,10 +191,16 @@ class AnalysisFrame:
         self.progress_container.grid_forget()
 
     def _clear_output(self):
+        if not messagebox.askyesno(
+            "Confirm Clear",
+            "Clear the output?"
+        ):
+            return
         self.output_text.config(state="normal")
         self.output_text.delete("1.0", tk.END)
         self.output_text.config(state="disabled")
-
+        self.current_thread_id = None
+        
     def _append(self, txt: str):
         fmt = self._format_code_blocks(txt)
         self.output_text.config(state="normal")
@@ -211,7 +224,7 @@ class AnalysisFrame:
             return txt
         rows = [row.strip('| ').split('|') for row in table]
         cols = len(rows[0])
-        widths = [0]*cols
+        widths = [0] * cols
         for r in rows:
             for idx, c in enumerate(r):
                 widths[idx] = max(widths[idx], len(c))
@@ -219,7 +232,7 @@ class AnalysisFrame:
         for ln in lines:
             if ti < len(table) and ln == table[ti]:
                 cells = [
-                    rows[ti][idx].ljust(widths[idx]) if set(rows[ti][idx])!={"-"} else "-"*widths[idx]
+                    rows[ti][idx].ljust(widths[idx]) if set(rows[ti][idx]) != {"-"} else "-" * widths[idx]
                     for idx in range(len(rows[ti]))
                 ]
                 out.append("| " + " | ".join(cells) + " |")

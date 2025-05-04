@@ -21,14 +21,22 @@ def analyze_pdf_with_openai(
     thread = client.beta.threads.create()
     prompt = (
         "You are a financial analyst.\n"
-        "1) From the attached PDF, extract the key metrics per period.\n"
-        "2) Construct an ASCII table, wrapped in triple backticks, using pipes (|) as column separators.\n"
-        "   - Determine the maximum width of each column.\n"
-        "   - Pad each cell with spaces so that every '|' in all rows lines up vertically.\n"
-        "3) After the table code block, provide a narrative analysis:\n"
-        "   a) Under 'Row Analysis:', write one sentence per metric explaining its significance.\n"
-        "   b) Under 'Overall Summary:', write one brief paragraph summarizing the table's insights.\n"
-        "4) Do not include any other text or commentary."
+        "1) From the attached PDF, extract all key financial metrics and KPIs presented for the given period.\n"
+        "2) Compute additional commonly used derived indicators if not explicitly stated, such as:\n"
+        "   - Gross Margin = Gross Profit / Revenue\n"
+        "   - Operating Margin = Operating Income / Revenue\n"
+        "   - Net Margin = Net Income / Revenue\n"
+        "   - Return on Assets (ROA) = Net Income / Total Assets\n"
+        "   - EPS (if derivable), etc.\n"
+        "3) Present all metrics in a single well-formatted ASCII table, wrapped in triple backticks:\n"
+        "   - Use '|' as column separators\n"
+        "   - Pad each cell so that all vertical lines align properly\n"
+        "   - Include appropriate headers and column alignment\n"
+        "4) After the table, write two sections:\n"
+        "   a) 'Row Analysis:': One sentence per metric explaining its meaning and significance\n"
+        "   b) 'Overall Summary:': A paragraph summarizing financial insights for this report\n"
+        "5) Finally, under 'Visualization Suggestions:', recommend up to 3 types of charts that could effectively present this data to stakeholders.\n"
+        "6) Do not include any unrelated commentary."
     )
     client.beta.threads.messages.create(
         thread_id=thread.id,
@@ -62,12 +70,11 @@ def analyze_pdf_with_openai(
     except Exception:
         return assistant_msg.content
 
-
 def analyze_multiple_pdfs(
     pdf_paths: list[str],
     api_key: str,
     assistant_id: str
-) -> str:
+) -> tuple[str, str]:
     """
     Upload multiple PDFs and perform one combined analysis.
     """
@@ -87,14 +94,21 @@ def analyze_multiple_pdfs(
     thread = client.beta.threads.create()
     prompt = (
         "You are a financial analyst.\n"
-        "1) Analyze all attached PDFs together and combine their key metrics into one table.\n"
-        "2) Wrap the ASCII table in triple backticks:\n"
-        "   - Use '|' separators and determine the maximum width per column.\n"
-        "   - Pad each cell with spaces so that vertical lines align across all rows.\n"
-        "3) After the code block, add narrative analysis:\n"
-        "   a) 'Row Analysis:' with one sentence per metric.\n"
-        "   b) 'Overall Summary:' one paragraph synthesizing insights.\n"
-        "4) Only output the code block and the two analysis sections."
+        "1) Analyze the attached multiple PDF files, each of which represents a different financial period (e.g., different quarters or years).\n"
+        "2) Extract comparable financial metrics across all periods, and compute derived metrics, such as:\n"
+        "   - Gross Margin, Net Margin, ROA, Operating Margin\n"
+        "   - Year-over-Year (YoY) or Quarter-over-Quarter (QoQ) growth\n"
+        "   - EPS and other investor-relevant KPIs\n"
+        "3) Build an ASCII table that summarizes the raw and computed metrics across all periods:\n"
+        "   - Wrap it in triple backticks (```)\n"
+        "   - Use '|' to separate columns and pad cells so vertical lines align\n"
+        "   - Each row should represent a metric; each column a period (e.g., Q1 FY24, Q2 FY24, etc.)\n"
+        "4) After the table, include the following sections:\n"
+        "   a) 'Comparative Analysis:': Discuss significant trends, changes, and anomalies between periods\n"
+        "   b) 'Risk Assessment:': Identify financial or operational risks implied by the data (e.g., declining margins, increasing debt, slowed revenue growth)\n"
+        "   c) 'Strategic Insights:': Suggest potential areas for improvement or opportunities indicated by the data\n"
+        "5) Under 'Visualization Suggestions:', recommend up to 3 charts (e.g., line, stacked bar) that would best highlight these comparative insights.\n"
+        "6) Keep the output clean and professional, limited to the table and the four labeled sections."
     )
     client.beta.threads.messages.create(
         thread_id=thread.id,
@@ -124,23 +138,27 @@ def analyze_multiple_pdfs(
     messages = client.beta.threads.messages.list(thread_id=thread.id).data
     assistant_msg = next(m for m in messages if m.role == "assistant")
     try:
-        return assistant_msg.content[0].text.value
+        text = assistant_msg.content[0].text.value
     except Exception:
-        return assistant_msg.content
-
+        text = assistant_msg.content
+    return text, thread.id
 
 def chat_with_openai(
     api_key: str,
     assistant_id: str,
-    user_message: str
-) -> str:
+    user_message: str,
+    thread_id: str = None
+) -> tuple[str, str]:
     """
     Send a plain-text chat message to the Assistants API and return the assistant's reply.
     """
     client = OpenAI(api_key=api_key)
 
     # Create thread and send message
-    thread = client.beta.threads.create()
+    if thread_id:
+        thread = client.beta.threads.retrieve(thread_id=thread_id)
+    else:
+        thread = client.beta.threads.create()
     client.beta.threads.messages.create(
         thread_id=thread.id,
         role="user",
@@ -168,6 +186,7 @@ def chat_with_openai(
     msgs = client.beta.threads.messages.list(thread_id=thread.id).data
     assistant_msg = next(m for m in msgs if m.role == "assistant")
     try:
-        return assistant_msg.content[0].text.value
+        text = assistant_msg.content[0].text.value
     except Exception:
-        return assistant_msg.content
+        text = assistant_msg.content
+    return text, thread.id
